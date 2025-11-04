@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, TrendingUp, TrendingDown, Minus, Filter } from 'lucide-react';
-import { signalsAPI, pricesAPI } from '../services/api';
+import { RefreshCw, TrendingUp, TrendingDown, Minus, Filter, Zap, Activity } from 'lucide-react';
+import { signalsAPI, pricesAPI, websocketService } from '../services/api';
 
 const SignalBoard = () => {
   const [signals, setSignals] = useState([]);
@@ -8,6 +8,7 @@ const SignalBoard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [realTimeUpdates, setRealTimeUpdates] = useState(0);
 
   const fetchData = async () => {
     try {
@@ -28,8 +29,26 @@ const SignalBoard = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    
+    // Set up WebSocket for real-time updates
+    websocketService.connect();
+    
+    const handleWebSocketMessage = (data) => {
+      if (data.type === 'new_signal') {
+        setRealTimeUpdates(prev => prev + 1);
+        // Update signals with new data
+        setSignals(prev => {
+          const filtered = prev.filter(s => s.symbol !== data.data.symbol);
+          return [data.data, ...filtered];
+        });
+      }
+    };
+
+    websocketService.addMessageHandler(handleWebSocketMessage);
+
+    return () => {
+      websocketService.removeMessageHandler(handleWebSocketMessage);
+    };
   }, []);
 
   const getSignalIcon = (signal) => {
@@ -85,6 +104,8 @@ const SignalBoard = () => {
     ? signals 
     : signals.filter(signal => signal.type === filter);
 
+  const strongSignals = signals.filter(s => s.confidence >= 70 && s.signal !== 'NEUTRAL');
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -97,15 +118,34 @@ const SignalBoard = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Live Trading Signals
-          </h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              AI Trading Signals
+            </h2>
+            {realTimeUpdates > 0 && (
+              <div className="flex items-center space-x-1 bg-green-100 dark:bg-green-900 px-2 py-1 rounded-full">
+                <Activity className="w-3 h-3 text-green-600 dark:text-green-400" />
+                <span className="text-xs text-green-700 dark:text-green-300 font-medium">
+                  Live
+                </span>
+              </div>
+            )}
+          </div>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Real-time AI-generated signals for Forex, Crypto, and Stocks
+            Real-time AI-generated signals with advanced technical analysis
           </p>
         </div>
         
         <div className="flex items-center space-x-4">
+          {strongSignals.length > 0 && (
+            <div className="flex items-center space-x-2 bg-orange-100 dark:bg-orange-900 px-3 py-2 rounded-lg">
+              <Zap className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                {strongSignals.length} Strong Signals
+              </span>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-2">
             <Filter className="w-4 h-4 text-gray-500" />
             <select
@@ -131,12 +171,36 @@ const SignalBoard = () => {
         </div>
       </div>
 
+      {/* Strong Signals Alert */}
+      {strongSignals.length > 0 && (
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-4 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Zap className="w-5 h-5" />
+              <span className="font-semibold">High-Confidence Trading Opportunities</span>
+            </div>
+            <span className="bg-white bg-opacity-20 px-2 py-1 rounded-full text-sm">
+              {strongSignals.length} signals
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredSignals.map((item) => (
           <div
             key={item.symbol}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-300 relative"
           >
+            {item.confidence >= 70 && (
+              <div className="absolute -top-2 -right-2">
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                  <Zap className="w-3 h-3" />
+                  <span>Strong</span>
+                </div>
+              </div>
+            )}
+            
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -193,6 +257,19 @@ const SignalBoard = () => {
                     'text-yellow-600 dark:text-yellow-400'
                   }`}>
                     {item.rsi}
+                  </span>
+                </div>
+              )}
+
+              {item.signal_points && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Signal Points</span>
+                  <span className={`font-semibold ${
+                    item.signal_points > 0 ? 'text-green-600 dark:text-green-400' :
+                    item.signal_points < 0 ? 'text-red-600 dark:text-red-400' :
+                    'text-yellow-600 dark:text-yellow-400'
+                  }`}>
+                    {item.signal_points > 0 ? '+' : ''}{item.signal_points}
                   </span>
                 </div>
               )}
