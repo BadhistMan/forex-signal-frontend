@@ -1,41 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { X, Bell, TrendingUp, TrendingDown } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { X, TrendingUp, TrendingDown } from 'lucide-react';
 
 const Notification = () => {
   const [notifications, setNotifications] = useState([]);
   const [show, setShow] = useState(false);
-  const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      // Simulate new signal notifications (in real app, this would come from WebSocket)
-      const interval = setInterval(() => {
-        if (Math.random() > 0.7) { // 30% chance every 30 seconds
-          const symbols = ['EUR/USD', 'BTC/USD', 'AAPL', 'GBP/USD'];
-          const signalTypes = ['BUY', 'SELL'];
-          const strengths = ['STRONG BUY', 'BUY', 'STRONG SELL', 'SELL'];
-          
-          const newNotification = {
-            id: Date.now(),
-            symbol: symbols[Math.floor(Math.random() * symbols.length)],
-            signal: signalTypes[Math.floor(Math.random() * signalTypes.length)],
-            strength: strengths[Math.floor(Math.random() * strengths.length)],
-            confidence: Math.floor(Math.random() * 30) + 70,
-            timestamp: new Date()
-          };
-          
-          setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
-          setShow(true);
-          
-          // Auto hide after 5 seconds
-          setTimeout(() => setShow(false), 5000);
-        }
-      }, 30000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [user]);
+    // Simulate new signal notifications for all visitors
+    const interval = setInterval(() => {
+      if (Math.random() > 0.8) { // 20% chance every 30 seconds
+        const symbols = ['EUR/USD', 'BTC/USD', 'AAPL', 'GBP/USD'];
+        const signalTypes = ['BUY', 'SELL'];
+        const strengths = ['STRONG BUY', 'BUY', 'STRONG SELL', 'SELL'];
+        
+        const newNotification = {
+          id: Date.now(),
+          symbol: symbols[Math.floor(Math.random() * symbols.length)],
+          signal: signalTypes[Math.floor(Math.random() * signalTypes.length)],
+          strength: strengths[Math.floor(Math.random() * strengths.length)],
+          confidence: Math.floor(Math.random() * 30) + 70,
+          timestamp: new Date()
+        };
+        
+        setNotifications(prev => [newNotification, ...prev.slice(0, 4)]);
+        setShow(true);
+        
+        // Auto hide after 5 seconds
+        setTimeout(() => setShow(false), 5000);
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const removeNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -53,7 +49,7 @@ const Notification = () => {
     return 'text-red-600';
   };
 
-  if (!user || !show || notifications.length === 0) return null;
+  if (!show || notifications.length === 0) return null;
 
   return (
     <div className="fixed top-20 right-4 z-50 space-y-2">
