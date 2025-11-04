@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, TrendingUp, TrendingDown, Minus, AlertCircle, Filter } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, Minus, Filter } from 'lucide-react';
 import { signalsAPI, pricesAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 
 const SignalBoard = () => {
   const [signals, setSignals] = useState([]);
@@ -9,13 +8,12 @@ const SignalBoard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
-  const { user } = useAuth();
 
   const fetchData = async () => {
     try {
       setRefreshing(true);
       const [signalsData, pricesData] = await Promise.all([
-        user ? signalsAPI.getSignals() : Promise.resolve([]),
+        signalsAPI.getSignals(),
         pricesAPI.getPrices()
       ]);
       setSignals(signalsData);
@@ -32,7 +30,7 @@ const SignalBoard = () => {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, []);
 
   const getSignalIcon = (signal) => {
     switch (signal) {
@@ -87,8 +85,6 @@ const SignalBoard = () => {
     ? signals 
     : signals.filter(signal => signal.type === filter);
 
-  const displayData = user ? filteredSignals : prices;
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -102,32 +98,27 @@ const SignalBoard = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {user ? 'Live Trading Signals' : 'Market Prices'}
+            Live Trading Signals
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {user 
-              ? 'Real-time AI-generated signals for Forex, Crypto, and Stocks'
-              : 'Current market prices - Sign in to view trading signals'
-            }
+            Real-time AI-generated signals for Forex, Crypto, and Stocks
           </p>
         </div>
         
         <div className="flex items-center space-x-4">
-          {user && (
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Markets</option>
-                <option value="forex">Forex</option>
-                <option value="crypto">Crypto</option>
-                <option value="stock">Stocks</option>
-              </select>
-            </div>
-          )}
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Markets</option>
+              <option value="forex">Forex</option>
+              <option value="crypto">Crypto</option>
+              <option value="stock">Stocks</option>
+            </select>
+          </div>
           
           <button
             onClick={fetchData}
@@ -140,19 +131,8 @@ const SignalBoard = () => {
         </div>
       </div>
 
-      {!user && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-2" />
-            <p className="text-yellow-700 dark:text-yellow-300 text-sm">
-              <a href="/login" className="underline font-medium">Sign in</a> to view AI-generated trading signals with buy/sell recommendations.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {displayData.map((item) => (
+        {filteredSignals.map((item) => (
           <div
             key={item.symbol}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
@@ -175,70 +155,60 @@ const SignalBoard = () => {
                   {item.type}
                 </span>
                 
-                {user && item.signal && (
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ${getSignalColor(item.strength)}`}>
-                    {getSignalIcon(item.signal)}
-                    <span>{item.strength}</span>
-                  </div>
-                )}
+                <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ${getSignalColor(item.strength)}`}>
+                  {getSignalIcon(item.signal)}
+                  <span>{item.strength}</span>
+                </div>
               </div>
             </div>
 
-            {user && item.signal && (
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    <span>Confidence</span>
-                    <span className={`font-semibold ${getConfidenceColor(item.confidence)}`}>
-                      {item.confidence}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${
-                        item.confidence >= 80 
-                          ? 'bg-green-500' 
-                          : item.confidence >= 60 
-                          ? 'bg-yellow-500' 
-                          : 'bg-red-500'
-                      }`}
-                      style={{ width: `${item.confidence}%` }}
-                    ></div>
-                  </div>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <span>Confidence</span>
+                  <span className={`font-semibold ${getConfidenceColor(item.confidence)}`}>
+                    {item.confidence}%
+                  </span>
                 </div>
-
-                {item.rsi && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">RSI</span>
-                    <span className={`font-semibold ${
-                      item.rsi < 30 ? 'text-green-600 dark:text-green-400' :
-                      item.rsi > 70 ? 'text-red-600 dark:text-red-400' :
-                      'text-yellow-600 dark:text-yellow-400'
-                    }`}>
-                      {item.rsi}
-                    </span>
-                  </div>
-                )}
-
-                <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
-                  Updated {new Date(item.created_at || item.timestamp).toLocaleTimeString()}
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      item.confidence >= 80 
+                        ? 'bg-green-500' 
+                        : item.confidence >= 60 
+                        ? 'bg-yellow-500' 
+                        : 'bg-red-500'
+                    }`}
+                    style={{ width: `${item.confidence}%` }}
+                  ></div>
                 </div>
               </div>
-            )}
 
-            {!user && (
+              {item.rsi && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">RSI</span>
+                  <span className={`font-semibold ${
+                    item.rsi < 30 ? 'text-green-600 dark:text-green-400' :
+                    item.rsi > 70 ? 'text-red-600 dark:text-red-400' :
+                    'text-yellow-600 dark:text-yellow-400'
+                  }`}>
+                    {item.rsi}
+                  </span>
+                </div>
+              )}
+
               <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
-                Live price • {new Date(item.timestamp).toLocaleTimeString()}
+                Updated {new Date(item.created_at).toLocaleTimeString()}
               </div>
-            )}
+            </div>
           </div>
         ))}
       </div>
 
-      {displayData.length === 0 && (
+      {filteredSignals.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 dark:text-gray-500 mb-4">
-            No data available
+            No signals available
           </div>
           <button 
             onClick={fetchData}
