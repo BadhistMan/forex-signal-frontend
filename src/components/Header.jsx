@@ -5,22 +5,14 @@ import {
   Moon, 
   Sun,
   Bell,
-  User,
-  LogOut,
-  Settings,
   BarChart3,
   Menu,
   X
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { signalsAPI } from '../services/api';
 
 const Header = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const { user, logout } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -33,35 +25,13 @@ const Header = () => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
-  useEffect(() => {
-    if (user) {
-      fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const data = await signalsAPI.getUnreadCount();
-      setUnreadCount(data.count);
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-    }
-  };
-
   const navigation = [
     { id: 'signals', name: 'Live Signals', path: '/', icon: TrendingUp },
     { id: 'charts', name: 'Live Charts', path: '/charts', icon: BarChart3 },
     { id: 'history', name: 'History', path: '/history', icon: TrendingUp },
-    { id: 'about', name: 'About', path: '/about', icon: User },
-    { id: 'contact', name: 'Contact', path: '/contact', icon: User },
+    { id: 'about', name: 'About', path: '/about', icon: BarChart3 },
+    { id: 'contact', name: 'Contact', path: '/contact', icon: BarChart3 },
   ];
-
-  const handleLogout = () => {
-    logout();
-    setUserMenuOpen(false);
-  };
 
   const isActive = (path) => location.pathname === path;
 
@@ -116,78 +86,6 @@ const Header = () => {
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-
-            {/* Notifications */}
-            {user && (
-              <div className="relative">
-                <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
-                  <Bell className="w-5 h-5" />
-                </button>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* User menu or Auth buttons */}
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <User className="w-5 h-5" />
-                  <span className="hidden sm:block text-sm font-medium">{user.name}</span>
-                </button>
-
-                {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-                    <Link
-                      to="/profile"
-                      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Profile</span>
-                    </Link>
-                    {user.isAdmin && (
-                      <Link
-                        to="/admin"
-                        className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span>Admin</span>
-                      </Link>
-                    )}
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            )}
 
             {/* Mobile menu button */}
             <button
